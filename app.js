@@ -15,36 +15,37 @@ function renderContacts(contacts) {
   if (contacts.length === 0) {
     addRow();
   } else {
-    contacts.forEach(c => addRow(c.name, c.number));
+    contacts.forEach(c => addRow(c.name, c.home, c.mobile, c.work));
   }
 }
 
-function addRow(name = '', number = '') {
+function addRow(name = '', home = '', mobile = '', work = '') {
   const body = document.getElementById('contacts-body');
   const tr = document.createElement('tr');
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.className = 'name';
-  nameInput.value = name;
-  const numberInput = document.createElement('input');
-  numberInput.type = 'text';
-  numberInput.className = 'number';
-  numberInput.value = number;
 
-  const nameTd = document.createElement('td');
-  nameTd.appendChild(nameInput);
-  const numberTd = document.createElement('td');
-  numberTd.appendChild(numberInput);
+  const makeInput = (className, value) => {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = className;
+    input.value = value;
+    const td = document.createElement('td');
+    td.appendChild(input);
+    return td;
+  };
+
+  tr.appendChild(makeInput('name', name));
+  tr.appendChild(makeInput('home', home));
+  tr.appendChild(makeInput('mobile', mobile));
+  tr.appendChild(makeInput('work', work));
+
   const actionTd = document.createElement('td');
   actionTd.className = 'row-actions';
   const removeBtn = document.createElement('button');
   removeBtn.textContent = '✕';
   removeBtn.onclick = () => tr.remove();
   actionTd.appendChild(removeBtn);
-
-  tr.appendChild(nameTd);
-  tr.appendChild(numberTd);
   tr.appendChild(actionTd);
+
   body.appendChild(tr);
 }
 
@@ -53,8 +54,10 @@ function collectContacts() {
   const contacts = [];
   rows.forEach(row => {
     const name = row.querySelector('.name').value.trim();
-    const number = row.querySelector('.number').value.trim();
-    if (name || number) contacts.push({ name, number });
+    const home = row.querySelector('.home').value.trim();
+    const mobile = row.querySelector('.mobile').value.trim();
+    const work = row.querySelector('.work').value.trim();
+    if (name || home || mobile || work) contacts.push({ name, home, mobile, work });
   });
   return contacts;
 }
@@ -83,7 +86,9 @@ async function downloadExcel() {
 
   ws.columns = [
     { header: 'Name', key: 'name', width: 32 },
-    { header: 'Telefonnummer', key: 'number', width: 22 },
+    { header: 'Telefon (privat)', key: 'home', width: 22 },
+    { header: 'Mobil', key: 'mobile', width: 22 },
+    { header: 'Geschäftlich', key: 'work', width: 22 },
   ];
 
   const headerRow = ws.getRow(1);
@@ -99,7 +104,7 @@ async function downloadExcel() {
   headerRow.height = 20;
 
   contacts.forEach((c, idx) => {
-    const row = ws.addRow({ name: c.name, number: c.number });
+    const row = ws.addRow({ name: c.name, home: c.home, mobile: c.mobile, work: c.work });
     row.eachCell(cell => {
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFDDDDDD' } },
@@ -113,7 +118,7 @@ async function downloadExcel() {
     });
   });
 
-  ws.autoFilter = { from: 'A1', to: 'B1' };
+  ws.autoFilter = { from: 'A1', to: 'D1' };
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -140,7 +145,7 @@ function uploadExcel(file) {
     const rows = [];
     ws.eachRow((row) => {
       const values = row.values;
-      rows.push([values[1], values[2]]);
+      rows.push([values[1], values[2], values[3], values[4]]);
     });
 
     let dataRows = rows;
@@ -151,8 +156,13 @@ function uploadExcel(file) {
     }
 
     const contacts = dataRows
-      .map(r => ({ name: String(r[0] || '').trim(), number: String(r[1] || '').trim() }))
-      .filter(c => c.name || c.number);
+      .map(r => ({
+        name: String(r[0] || '').trim(),
+        home: String(r[1] || '').trim(),
+        mobile: String(r[2] || '').trim(),
+        work: String(r[3] || '').trim(),
+      }))
+      .filter(c => c.name || c.home || c.mobile || c.work);
 
     renderContacts(contacts);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
@@ -172,20 +182,32 @@ function escapeXml(s) {
 
 function buildFritzboxXml(contacts) {
   const contactsXml = contacts
-    .filter(c => c.name || c.number)
-    .map((c, idx) => `    <contact>
+    .filter(c => c.name || c.home || c.mobile || c.work)
+    .map((c, idx) => {
+      const numbers = [
+        c.home && { type: 'home', value: c.home },
+        c.mobile && { type: 'mobile', value: c.mobile },
+        c.work && { type: 'work', value: c.work },
+      ].filter(Boolean);
+
+      const numbersXml = numbers
+        .map((n, numIdx) => `        <number type="${n.type}" prio="${numIdx === 0 ? '1' : '0'}" id="${numIdx}">${escapeXml(n.value)}</number>`)
+        .join('\n');
+
+      return `    <contact>
       <category>0</category>
       <person>
         <realName>${escapeXml(c.name)}</realName>
       </person>
-      <telephony nid="1">
-        <number type="home" prio="1" id="${idx}">${escapeXml(c.number)}</number>
+      <telephony nid="${numbers.length}">
+${numbersXml}
       </telephony>
       <services />
       <setup />
       <features doorphone="0" />
       <uniqueid>${idx + 1}</uniqueid>
-    </contact>`)
+    </contact>`;
+    })
     .join('\n');
 
   return `<?xml version="1.0" encoding="utf-8"?>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fritzbox Telefonbuch Generator</title>
 <style>
-  body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+  body { font-family: sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
   h1 { font-size: 1.4rem; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
   th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
@@ -22,11 +22,11 @@
 <body>
   <h1>Fritzbox Telefonbuch Generator</h1>
   <p class="privacy">Alle Daten bleiben ausschließlich in deinem Browser (localStorage) und werden nirgendwo hochgeladen. Diese Seite funktioniert komplett offline, es gibt keinen Server und keine Übertragung von Namen oder Telefonnummern.</p>
-  <p class="hint">Namen und Telefonnummern eintragen, als Excel sichern oder direkt als Fritzbox-XML exportieren.</p>
+  <p class="hint">Namen und Telefonnummern eintragen, als Excel sichern oder direkt als Fritzbox-XML exportieren. Pro Kontakt können Privat-, Mobil- und Geschäftsnummer angegeben werden (mind. eine reicht).</p>
 
   <table id="contacts-table">
     <thead>
-      <tr><th>Name</th><th>Telefonnummer</th><th class="row-actions"></th></tr>
+      <tr><th>Name</th><th>Telefon (privat)</th><th>Mobil</th><th>Geschäftlich</th><th class="row-actions"></th></tr>
     </thead>
     <tbody id="contacts-body"></tbody>
   </table>
